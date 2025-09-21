@@ -599,6 +599,23 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </Link>
+
+                <Link
+                  to="/playwright-demo"
+                  className="flex items-center p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center mr-4">
+                    <Bot className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-900">
+                      Browser Automation Demo
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      See Playwright automation in action
+                    </p>
+                  </div>
+                </Link>
               </div>
             </div>
           </div>

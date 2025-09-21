@@ -833,14 +833,16 @@ const TaskDetail = () => {
                 </span>
               )}
               {!validating && (
-                <button
-                  onClick={startValidation}
-                  disabled={validating}
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  {currentValidation ? "Re-validate" : "Start Validation"}
-                </button>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={startValidation}
+                    disabled={validating}
+                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    <Play className="h-5 w-5 mr-2" />
+                    {currentValidation ? "Re-validate" : "Start Validation"}
+                  </button>
+                </div>
               )}
               {validating && (
                 <button
@@ -882,7 +884,7 @@ const TaskDetail = () => {
                   name: "Validation Results",
                   icon: CheckCircle,
                 },
-                { id: "automation", name: "Automation", icon: Bot },
+                { id: "automation", name: "Browser Automation", icon: Monitor },
                 {
                   id: "functional",
                   name: "Functional Tests",
@@ -1142,7 +1144,8 @@ const TaskDetail = () => {
                               headings.length > 0 && (
                                 <div key={level} className="mb-2">
                                   <span className="text-sm font-medium text-slate-700">
-                                    {level.toUpperCase()} ({headings.length}):
+                                    {level?.toUpperCase() || "UNKNOWN"} (
+                                    {headings.length}):
                                   </span>
                                   <ul className="ml-4 text-sm text-slate-600">
                                     {headings.map((heading, idx) => (
@@ -1308,15 +1311,16 @@ const TaskDetail = () => {
               </div>
             )}
 
-            {/* Automation Tab */}
+            {/* Browser Automation Tab */}
             {activeTab === "automation" && (
               <div>
                 {currentValidation?.automationResults ? (
                   <div className="space-y-6">
                     {/* Automation Summary */}
                     <div className="bg-slate-50 rounded-lg p-6">
-                      <h4 className="font-medium text-slate-900 mb-4">
-                        Automation Summary
+                      <h4 className="font-medium text-slate-900 mb-4 flex items-center">
+                        <Monitor className="h-5 w-5 mr-2 text-blue-500" />
+                        Browser Automation Summary
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="text-center">
@@ -1356,14 +1360,92 @@ const TaskDetail = () => {
                       </div>
                     </div>
 
-                    {/* Automation Steps */}
+                    {/* Automation Steps with Screenshots */}
                     <div>
                       <h4 className="font-medium text-slate-900 mb-4">
-                        Automation Steps
+                        Automation Steps & Screenshots
                       </h4>
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {currentValidation.automationResults.stepResults?.map(
-                          renderAutomationStep
+                          (step, index) => (
+                            <div
+                              key={index}
+                              className="border border-slate-200 rounded-lg p-6 hover:shadow-sm transition-shadow"
+                            >
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                                    Step {index + 1}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-1 text-xs rounded-full border ${
+                                      step.status === "passed"
+                                        ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                        : step.status === "failed"
+                                        ? "bg-red-100 text-red-800 border-red-200"
+                                        : "bg-slate-100 text-slate-800 border-slate-200"
+                                    }`}
+                                  >
+                                    {step.status}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-slate-500">
+                                  {formatDuration(step.duration)}
+                                </span>
+                              </div>
+
+                              <h5 className="font-medium text-slate-900 mb-2">
+                                {step.step}
+                              </h5>
+                              <p className="text-sm text-slate-600 mb-3 capitalize">
+                                <strong>Action:</strong> {step.action}
+                              </p>
+
+                              {step.evidence && (
+                                <div className="bg-slate-50 p-3 rounded text-sm text-slate-600 mb-3">
+                                  <strong>Evidence:</strong> {step.evidence}
+                                </div>
+                              )}
+
+                              {step.error && (
+                                <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-700 mb-3">
+                                  <strong>Error:</strong> {step.error}
+                                </div>
+                              )}
+
+                              {/* Screenshot Display */}
+                              {step.screenshot && (
+                                <div className="mt-4">
+                                  <h6 className="text-sm font-medium text-slate-700 mb-2">
+                                    Screenshot:
+                                  </h6>
+                                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                    <img
+                                      src={`/api/screenshots/${step.screenshot
+                                        .split("/")
+                                        .pop()}`}
+                                      alt={`Screenshot for step: ${step.step}`}
+                                      className="w-full h-auto max-h-96 object-contain bg-slate-50"
+                                      onError={(e) => {
+                                        e.target.style.display = "none";
+                                        e.target.nextSibling.style.display =
+                                          "block";
+                                      }}
+                                    />
+                                    <div
+                                      className="hidden p-4 text-center text-slate-500 bg-slate-50"
+                                      style={{ display: "none" }}
+                                    >
+                                      <FileImage className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                                      <p className="text-sm">
+                                        Screenshot not available
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
@@ -1378,25 +1460,43 @@ const TaskDetail = () => {
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {currentValidation.automationResults.generatedFiles.map(
-                              (file, idx) => (
-                                <div
-                                  key={idx}
-                                  className="p-4 bg-slate-50 rounded-lg border border-slate-200"
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <DownloadIcon className="h-8 w-8 text-blue-500" />
-                                    <div>
-                                      <p className="font-medium text-slate-900">
-                                        {file.filename}
-                                      </p>
-                                      <p className="text-sm text-slate-600">
-                                        {file.type.toUpperCase()} •{" "}
-                                        {(file.size / 1024).toFixed(1)} KB
-                                      </p>
+                              (file, idx) => {
+                                // Handle both string paths and file objects
+                                const fileName =
+                                  typeof file === "string"
+                                    ? file.split("/").pop()
+                                    : file.filename || "Unknown file";
+                                const fileType =
+                                  typeof file === "string"
+                                    ? file.split(".").pop()?.toUpperCase() ||
+                                      "FILE"
+                                    : file.type?.toUpperCase() || "FILE";
+                                const fileSize =
+                                  typeof file === "string"
+                                    ? "Unknown size"
+                                    : file.size
+                                    ? `${(file.size / 1024).toFixed(1)} KB`
+                                    : "Unknown size";
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="p-4 bg-slate-50 rounded-lg border border-slate-200"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <DownloadIcon className="h-8 w-8 text-blue-500" />
+                                      <div>
+                                        <p className="font-medium text-slate-900">
+                                          {fileName}
+                                        </p>
+                                        <p className="text-sm text-slate-600">
+                                          {fileType} • {fileSize}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )
+                                );
+                              }
                             )}
                           </div>
                         </div>
@@ -1404,12 +1504,12 @@ const TaskDetail = () => {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Bot className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                    <Monitor className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                     <p className="text-slate-600 text-lg">
-                      No automation results yet
+                      No browser automation results yet
                     </p>
                     <p className="text-sm text-slate-500 mt-1">
-                      Run validation to see automation results
+                      Run validation to see browser automation with screenshots
                     </p>
                   </div>
                 )}

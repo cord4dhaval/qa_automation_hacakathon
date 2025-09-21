@@ -2,6 +2,7 @@ const puppeteer = require("puppeteer");
 const OpenAI = require("openai");
 const FunctionalTestService = require("./functionalTestService");
 const PuppeteerAutomationService = require("./puppeteerAutomationService");
+const PlaywrightAutomationService = require("./playwrightAutomationService");
 require("dotenv").config();
 
 class ValidationService {
@@ -13,6 +14,7 @@ class ValidationService {
     this.browser = null;
     this.functionalTestService = new FunctionalTestService();
     this.automationService = new PuppeteerAutomationService();
+    this.playwrightAutomationService = new PlaywrightAutomationService();
     this.initBrowser();
   }
 
@@ -198,23 +200,78 @@ class ValidationService {
     }
   }
 
+  async runPlaywrightAutomation(
+    targetUrl,
+    acceptanceCriteria,
+    websocketCallback = null,
+    headless = false,
+    connectToExisting = true
+  ) {
+    try {
+      console.log(
+        `🎭 Starting simplified Playwright automation for: ${targetUrl}`
+      );
+      console.log(`🌐 Browser mode: ${headless ? "headless" : "visible"}`);
+
+      const automationResults =
+        await this.playwrightAutomationService.runAutomation(
+          targetUrl,
+          acceptanceCriteria,
+          websocketCallback,
+          headless,
+          connectToExisting
+        );
+
+      console.log(
+        `✅ Playwright automation completed. Success rate: ${automationResults.successRate}%`
+      );
+      return automationResults;
+    } catch (error) {
+      console.error("❌ Playwright automation failed:", error);
+
+      // Return a more detailed error response
+      return {
+        totalSteps: 0,
+        completedSteps: 0,
+        failedSteps: 0,
+        successRate: 0,
+        totalDuration: 0,
+        stepResults: [
+          {
+            step: "Automation failed",
+            action: "error",
+            status: "failed",
+            error: error.message,
+            duration: 0,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        generatedFiles: [],
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
   async runComprehensiveAutomation(
     targetUrl,
     acceptanceCriteria,
     websocketCallback = null
   ) {
     try {
-      console.log(`🤖 Starting comprehensive automation for: ${targetUrl}`);
-      const automationResults = await this.automationService.runAutomation(
+      console.log(`🚀 Starting comprehensive automation for: ${targetUrl}`);
+
+      // Run Playwright automation with visible browser
+      const playwrightResults = await this.runPlaywrightAutomation(
         targetUrl,
         acceptanceCriteria,
-        websocketCallback
+        websocketCallback,
+        false, // headless = false for visible browser
+        true // connectToExisting = true to use existing browser window
       );
 
-      console.log(
-        `✅ Automation completed. Success rate: ${automationResults.successRate}%`
-      );
-      return automationResults;
+      console.log(`✅ Comprehensive automation completed`);
+      return playwrightResults;
     } catch (error) {
       console.error("❌ Comprehensive automation failed:", error);
       return {
@@ -223,7 +280,16 @@ class ValidationService {
         failedSteps: 0,
         successRate: 0,
         totalDuration: 0,
-        stepResults: [],
+        stepResults: [
+          {
+            step: "Comprehensive automation failed",
+            action: "error",
+            status: "failed",
+            error: error.message,
+            duration: 0,
+            timestamp: new Date().toISOString(),
+          },
+        ],
         generatedFiles: [],
         error: error.message,
         timestamp: new Date().toISOString(),
@@ -576,7 +642,8 @@ class ValidationService {
     validationResults,
     pageData,
     acceptanceCriteria,
-    functionalTestResults = null
+    functionalTestResults = null,
+    automationResults = null
   ) {
     try {
       let functionalTestSection = "";
@@ -602,6 +669,45 @@ class ValidationService {
         `;
       }
 
+      let automationSection = "";
+      if (automationResults) {
+        automationSection = `
+        
+        Simplified Playwright Automation Results:
+        - Total Steps: ${automationResults.totalSteps}
+        - Completed: ${automationResults.completedSteps}
+        - Failed: ${automationResults.failedSteps}
+        - Success Rate: ${automationResults.successRate}%
+        - Total Duration: ${automationResults.totalDuration}ms
+        
+        Automation Steps:
+        ${automationResults.stepResults
+          .map(
+            (step) =>
+              `- ${step.step}: ${
+                step.status === "passed" ? "✅ PASS" : "❌ FAIL"
+              } (${step.duration}ms)${
+                step.error ? ` - Error: ${step.error}` : ""
+              }`
+          )
+          .join("\n")}
+        
+        Page Analysis:
+        - Forms Found: ${automationResults.pageAnalysis?.forms || 0}
+        - Input Fields: ${automationResults.pageAnalysis?.inputs || 0}
+        - Buttons: ${automationResults.pageAnalysis?.buttons || 0}
+        - Has Email Field: ${
+          automationResults.pageAnalysis?.hasEmailField ? "Yes" : "No"
+        }
+        - Has Password Field: ${
+          automationResults.pageAnalysis?.hasPasswordField ? "Yes" : "No"
+        }
+        - Has Submit Button: ${
+          automationResults.pageAnalysis?.hasSubmitButton ? "Yes" : "No"
+        }
+        `;
+      }
+
       const prompt = `
         Analyze this web page validation against the acceptance criteria and provide a professional summary.
         
@@ -619,6 +725,7 @@ class ValidationService {
         - Links: ${pageData.links.length}
         - Forms: ${pageData.forms.length}
         ${functionalTestSection}
+        ${automationSection}
         
         Please provide a structured analysis including:
         1. What's working well
@@ -630,10 +737,15 @@ class ValidationService {
             ? "5. Functional test analysis and user interaction assessment"
             : ""
         }
+        ${
+          automationResults
+            ? "6. Browser automation analysis and visual testing insights"
+            : ""
+        }
         
         Keep the response professional and actionable for QA testers.
         ${
-          functionalTestResults
+          functionalTestResults || automationResults
             ? "Focus on both static validation and functional behavior."
             : ""
         }
@@ -670,6 +782,9 @@ class ValidationService {
     }
     if (this.automationService) {
       await this.automationService.cleanup();
+    }
+    if (this.playwrightAutomationService) {
+      await this.playwrightAutomationService.cleanup();
     }
     if (this.functionalTestService) {
       await this.functionalTestService.cleanup();

@@ -123,35 +123,40 @@ router.post("/", async (req, res) => {
       acceptanceCriteria
     );
 
-    // Run Puppeteer automation for all task types based on acceptance criteria
+    // Run simplified Playwright automation for all task types
     let functionalTestResults = null;
     let automationResults = null;
 
-    // Always run comprehensive automation based on task type and acceptance criteria
-    console.log(`🤖 Running Puppeteer automation for task type: ${taskType}`);
-    automationResults = await validationService.runComprehensiveAutomation(
+    // Always run Playwright automation with visible browser for all task types
+    console.log(
+      `🎭 Running simplified Playwright automation for task type: ${taskType}`
+    );
+    automationResults = await validationService.runPlaywrightAutomation(
       targetUrl,
-      acceptanceCriteria
+      acceptanceCriteria,
+      (progressData) => {
+        // Broadcast progress to WebSocket clients
+        websocketService.broadcastAutomationProgress(taskId, progressData);
+      },
+      false, // headless = false for visible browser
+      true // connectToExisting = true to use existing browser window
     );
 
-    // Also run functional tests for specific task types
-    if (taskType === "functional") {
-      console.log(`🔧 Running additional functional tests`);
-      functionalTestResults = await validationService.runFunctionalTests(
-        targetUrl,
-        acceptanceCriteria
-      );
-    }
+    console.log(
+      `✅ Automation completed with ${automationResults.successRate}% success rate`
+    );
 
     // Generate AI summary
     console.log(`🤖 Generating AI analysis`);
     let aiSummary;
     if (automationResults) {
-      aiSummary =
-        await validationService.automationService.generateAutomationSummary(
-          automationResults,
-          acceptanceCriteria
-        );
+      aiSummary = await validationService.generateAISummary(
+        validationResults,
+        pageData,
+        acceptanceCriteria,
+        functionalTestResults,
+        automationResults
+      );
     } else {
       aiSummary = await validationService.generateAISummary(
         validationResults,

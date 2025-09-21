@@ -76,6 +76,9 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/validate", validationRoutes);
 app.use("/api/export", exportRoutes);
 
+// Serve screenshots
+app.use("/api/screenshots", express.static("screenshots"));
+
 // 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({
